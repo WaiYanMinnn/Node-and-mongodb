@@ -1,5 +1,6 @@
 const {MongoClient} =require("mongodb-legacy");
 const assert = require("assert").strict;
+const dboper=require("./operations");
 
 const url="mongodb://localhost:27017/";
 const dbName="nucampsite";
@@ -18,19 +19,33 @@ MongoClient.connect(url,{},(err,client)=>{
 
         const collection= db.collection('campsites');
         const documentToInsert = {name:"Breadcrumb Trail Campground", description:"Test"};
-        collection.insertOne(documentToInsert,(err,result)=>{
-            assert.strictEqual(err,undefined);
-            console.log("Insert Document:",{
-                _id:result.insertedId,
-                ...documentToInsert
-            });
-            collection.find().toArray((err,docs)=>{
-                assert.strictEqual(err,undefined);
+        dboper.insertDocument(db,documentToInsert,'campsites',
+            result=>{
+                console.log("inserted document:",{
+                    _id:result.insertedId,
+                    ...documentToInsert
+                });
+                dboper.findDocuments(db,'campsites',docs=>{
+                    console.log("Found Document: ",docs);
 
-                console.log("Found Documents",docs);
-                
-                client.close();
-            });
-        }); 
+                    dboper.updateDocument(db,{name:"Breadcrumb Trail Campground"},{description:"updated test description"},'campsites',result=>{
+                        console.log("Updated Document Count:",result.modifiedCount);
+
+                        dboper.findDocuments(db,'campsites',docs=>{
+                            console.log("Found Documents:",docs);
+
+                            dboper.removeDocument(db,{name:"Breadcrumb Trail Campground"},'campsites',result=>{
+                                console.log("Removed document:", result.deletedCount);
+            
+                                client.close();
+                            });
+                        });
+                    });
+                }
+                );
+            }
+        )
+
+  
     });
 });
