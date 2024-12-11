@@ -1,51 +1,47 @@
-const {MongoClient} =require("mongodb-legacy");
-const assert = require("assert").strict;
+const MongoClient =require("mongodb").MongoClient;
+
 const dboper=require("./operations");
 
 const url="mongodb://localhost:27017/";
 const dbName="nucampsite";
 
-MongoClient.connect(url,{},(err,client)=>{
-    assert.strictEqual(err,undefined);
+(async function(){
+    try{
+        const client=await MongoClient.connect(url,{});
+        console.log('Connected correctly to server');
 
-    console.log('Connected correctly to server');
+        const db= client.db(dbName);
 
-    const db= client.db(dbName);
+        try{
+            const dropResult= await db.dropCollection("campsites");
+            console.log('Dropped Collection',dropResult);
 
-    db.dropCollection("campsites",(err,result)=>{
-        assert.strictEqual(err,undefined);
+        }catch{
+            console.log('There is nothing to drop here');
+        }
 
-        console.log('Dropped Collection',result);
-
-        const collection= db.collection('campsites');
         const documentToInsert = {name:"Breadcrumb Trail Campground", description:"Test"};
-        dboper.insertDocument(db,documentToInsert,'campsites',
-            result=>{
-                console.log("inserted document:",{
-                    _id:result.insertedId,
-                    ...documentToInsert
-                });
-                dboper.findDocuments(db,'campsites',docs=>{
-                    console.log("Found Document: ",docs);
 
-                    dboper.updateDocument(db,{name:"Breadcrumb Trail Campground"},{description:"updated test description"},'campsites',result=>{
-                        console.log("Updated Document Count:",result.modifiedCount);
+        const insertResult =await dboper.insertDocument(db,documentToInsert,'campsites');
+        console.log("inserted document:",{
+            _id:insertResult.insertedId,
+            ...documentToInsert
+        });
+        const findDocs=await dboper.findDocuments(db,'campsites');
+        console.log("Found Document: ",findDocs);
 
-                        dboper.findDocuments(db,'campsites',docs=>{
-                            console.log("Found Documents:",docs);
+        const updateDocs=await dboper.updateDocument(db,{name:"Breadcrumb Trail Campground"},{description:"updated test description"},'campsites');
+        console.log("Updated Document Count:",updateDocs.modifiedCount);
 
-                            dboper.removeDocument(db,{name:"Breadcrumb Trail Campground"},'campsites',result=>{
-                                console.log("Removed document:", result.deletedCount);
+        const updatedDocs=await dboper.findDocuments(db,'campsites')
+        console.log("Found Documents:",updatedDocs);
+
+        const removeDocs=await dboper.removeDocument(db,{name:"Breadcrumb Trail Campground"},'campsites');
+        console.log("Removed document:", removeDocs.deletedCount);
             
-                                client.close();
-                            });
-                        });
-                    });
-                }
-                );
-            }
-        )
-
-  
-    });
-});
+        await client.close();
+    }catch(err){
+        console.log(err);
+    }
+}
+)();
